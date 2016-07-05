@@ -113,6 +113,18 @@ Proof.
   intros P Q [[A B] [C D]]. split; auto.
 Qed.
 
+Instance massert_imp_eqv_Proper:
+  Proper (massert_eqv ==> massert_eqv ==> iff) massert_imp.
+Proof.
+  intros p q Hpq r s Hrs.
+  split; destruct 1 as [HR1 HR2];
+    constructor; intros;
+      apply Hrs || apply Hpq;
+      apply HR1 || apply HR2;
+      apply Hpq || apply Hrs;
+      assumption.
+Qed.
+
 Hint Resolve massert_imp_refl massert_eqv_refl : core.
 
 Instance footprint_massert_imp_Proper:
@@ -191,6 +203,15 @@ Lemma sep_imp:
   m |= P ** Q -> massert_imp P P' -> massert_imp Q Q' -> m |= P' ** Q'.
 Proof.
   intros. rewrite <- H0, <- H1; auto.
+Qed.
+
+Lemma sep_imp':
+  forall P P' Q Q',
+    massert_imp P P' ->
+    massert_imp Q Q' ->
+    massert_imp (P ** Q) (P' ** Q').
+Proof.
+  intros * HP HQ. rewrite HP, HQ. reflexivity.
 Qed.
 
 Lemma sep_comm_1:
@@ -272,15 +293,17 @@ Proof.
 Qed.
 
 Lemma sep_drop:
-  forall P Q m, m |= P ** Q -> m |= Q.
+  forall P Q, massert_imp (P ** Q) Q.
 Proof.
-  simpl; intros. tauto.
+  constructor.
+  - simpl; intros. tauto.
+  - intros. now constructor 2.
 Qed.
 
 Lemma sep_drop2:
-  forall P Q R m, m |= P ** Q ** R -> m |= P ** R.
+  forall P Q R, massert_imp (P ** Q ** R) (P ** R).
 Proof.
-  intros. rewrite sep_swap in H. eapply sep_drop; eauto.
+  intros. rewrite sep_swap, sep_drop. reflexivity.
 Qed.
 
 Lemma sep_proj1:
@@ -291,7 +314,9 @@ Qed.
 
 Lemma sep_proj2:
   forall P Q m, m |= P ** Q -> m |= Q.
-Proof sep_drop.
+Proof.
+  apply sep_drop.
+Qed.
 
 Definition sep_pick1 := sep_proj1.
 
@@ -458,15 +483,10 @@ Lemma range_split:
   m |= range' p b lo hi ** P ->
   m |= range' p b lo mid ** range' p b mid hi ** P.
 Proof.
-  intros. rewrite <- sep_assoc. eapply sep_imp; eauto.
-  split; simpl; intros.
-- intuition auto.
-+ omega.
-+ apply H5; omega.
-+ omega.
-+ apply H5; omega.
-+ red; simpl; intros; omega.
-- intuition omega.
+  intros.
+  rewrite <-sep_assoc.
+  rewrite range_split' with (1:=H) in H0.
+  assumption.
 Qed.
 
 Lemma range_drop_left:
