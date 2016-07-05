@@ -114,15 +114,27 @@ Proof.
   intros P Q [[A B] [C D]]. split; auto.
 Qed.
 
+Global Instance massert_imp_eqv_Proper:
+  Proper (massert_eqv ==> massert_eqv ==> iff) massert_imp.
+Proof.
+  intros p q Hpq r s Hrs.
+  split; destruct 1 as [HR1 HR2];
+    constructor; intros;
+      apply Hrs || apply Hpq;
+      apply HR1 || apply HR2;
+      apply Hpq || apply Hrs;
+      assumption.
+Qed.
+
 Global Hint Resolve massert_imp_refl massert_eqv_refl : core.
 
-Instance footprint_massert_imp_Proper:
+Global Instance footprint_massert_imp_Proper:
   Proper (massert_imp --> eq ==> eq ==> Basics.impl) m_footprint.
 Proof.
   destruct 1. repeat intro. subst. intuition.
 Qed.
 
-Instance footprint_massert_eqv_Proper:
+Global Instance footprint_massert_eqv_Proper:
   Proper (massert_eqv ==> eq ==> eq ==> iff) m_footprint.
 Proof.
   intros P Q HPQ b' b Hbeq ofs' ofs Hoeq.
@@ -192,6 +204,15 @@ Lemma sep_imp:
   m |= P ** Q -> massert_imp P P' -> massert_imp Q Q' -> m |= P' ** Q'.
 Proof.
   intros. rewrite <- H0, <- H1; auto.
+Qed.
+
+Lemma sep_imp':
+  forall P P' Q Q',
+    massert_imp P P' ->
+    massert_imp Q Q' ->
+    massert_imp (P ** Q) (P' ** Q').
+Proof.
+  intros * HP HQ. rewrite HP, HQ. reflexivity.
 Qed.
 
 Lemma sep_comm_1:
@@ -273,15 +294,17 @@ Proof.
 Qed.
 
 Lemma sep_drop:
-  forall P Q m, m |= P ** Q -> m |= Q.
+  forall P Q, massert_imp (P ** Q) Q.
 Proof.
-  simpl; intros. tauto.
+  constructor.
+  - simpl; intros. tauto.
+  - intros. now constructor 2.
 Qed.
 
 Lemma sep_drop2:
-  forall P Q R m, m |= P ** Q ** R -> m |= P ** R.
+  forall P Q R, massert_imp (P ** Q ** R) (P ** R).
 Proof.
-  intros. rewrite sep_swap in H. eapply sep_drop; eauto.
+  intros. rewrite sep_swap, sep_drop. reflexivity.
 Qed.
 
 Lemma sep_proj1:
@@ -292,7 +315,9 @@ Qed.
 
 Lemma sep_proj2:
   forall P Q m, m |= P ** Q -> m |= Q.
-Proof sep_drop.
+Proof.
+  apply sep_drop.
+Qed.
 
 Definition sep_pick1 := sep_proj1.
 
@@ -433,12 +458,12 @@ Proof.
     inversion HH as [Hlo [Hhi Hperm]].
     split; constructor; repeat split.
     + assumption.
-    + omega.
-    + intros. apply Hperm. omega.
-    + omega.
+    + lia.
+    + intros. apply Hperm. lia.
+    + lia.
     + exact Hhi.
-    + intros. apply Hperm. omega.
-    + red; simpl; intros; omega.
+    + intros. apply Hperm. lia.
+    + red; simpl; intros; lia.
   - intros. simpl in *. intuition.
   - intros m HH.
     inversion_clear HH as [Hlm [Hmh Hdisj]].
@@ -459,15 +484,10 @@ Lemma range_split:
   m |= range' p b lo hi ** P ->
   m |= range' p b lo mid ** range' p b mid hi ** P.
 Proof.
-  intros. rewrite <- sep_assoc. eapply sep_imp; eauto.
-  split; simpl; intros.
-- intuition auto.
-+ lia.
-+ apply H5; lia.
-+ lia.
-+ apply H5; lia.
-+ red; simpl; intros; lia.
-- intuition lia.
+  intros.
+  rewrite <-sep_assoc.
+  rewrite range_split' with (1:=H) in H0.
+  assumption.
 Qed.
 
 Lemma range_drop_left:
@@ -559,7 +579,7 @@ Proof.
   destruct H as (H1 & H2 & H3).
   split; [assumption|].
   generalize (size_chunk_pos chunk).
-  unfold Ptrofs.max_unsigned. omega.
+  unfold Ptrofs.max_unsigned. lia.
 Qed.
 
 Lemma load_rule:
@@ -640,7 +660,7 @@ Proof.
   assert (Mem.valid_access m chunk b ofs p).
   { split; auto. red; auto. }
   split; [|split].
-- generalize (size_chunk_pos chunk). omega.
+- generalize (size_chunk_pos chunk). lia.
 - assumption.
 - split; [assumption|].
   destruct (Mem.valid_access_load m chunk b ofs) as [v LOAD].
