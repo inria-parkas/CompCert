@@ -29,7 +29,7 @@
   frame rule; instead, a weak form of the frame rule is provided
   by the lemmas that help us reason about the logical assertions. *)
 
-Require Import Setoid Program.Basics.
+Require Import Setoid Morphisms Program.Basics.
 Require Import Coqlib Decidableplus.
 Require Import AST Integers Values Memory Events Globalenvs.
 
@@ -113,6 +113,18 @@ Proof.
   intros P Q [[A B] [C D]]. split; auto.
 Qed.
 
+Instance massert_imp_eqv_Proper:
+  Proper (massert_eqv ==> massert_eqv ==> iff) massert_imp.
+Proof.
+  intros p q Hpq r s Hrs.
+  split; destruct 1 as [HR1 HR2];
+    constructor; intros;
+      apply Hrs || apply Hpq;
+      apply HR1 || apply HR2;
+      apply Hpq || apply Hrs;
+      assumption.
+Qed.
+
 Hint Resolve massert_imp_refl massert_eqv_refl.
 
 (** * Separating conjunction *)
@@ -159,6 +171,15 @@ Lemma sep_imp:
   m |= P ** Q -> massert_imp P P' -> massert_imp Q Q' -> m |= P' ** Q'.
 Proof.
   intros. rewrite <- H0, <- H1; auto.
+Qed.
+
+Lemma sep_imp':
+  forall P P' Q Q',
+    massert_imp P P' ->
+    massert_imp Q Q' ->
+    massert_imp (P ** Q) (P' ** Q').
+Proof.
+  intros ** HP HQ. rewrite HP, HQ. reflexivity.
 Qed.
 
 Lemma sep_comm_1:
@@ -240,16 +261,18 @@ Proof.
 Qed.
 
 Lemma sep_drop:
-  forall P Q m, m |= P ** Q -> m |= Q.
+  forall P Q, massert_imp (P ** Q) Q.
 Proof.
-  simpl; intros. tauto.
+  constructor.
+  - simpl; intros. tauto.
+  - intros. constructor (assumption).
 Qed.
-
+ 
 Lemma sep_drop2:
-  forall P Q R m, m |= P ** Q ** R -> m |= P ** R.
+  forall P Q R, massert_imp (P ** Q ** R) (P ** R).
 Proof.
-  intros. rewrite sep_swap in H. eapply sep_drop; eauto.
-Qed. 
+  intros. rewrite sep_swap, sep_drop. reflexivity.
+Qed.
 
 Lemma sep_proj1:
   forall Q P m, m |= P ** Q -> m |= P.
@@ -259,7 +282,9 @@ Qed.
 
 Lemma sep_proj2:
   forall P Q m, m |= P ** Q -> m |= Q.
-Proof sep_drop.
+Proof.
+  apply sep_drop.
+Qed.
 
 Definition sep_pick1 := sep_proj1.
 
@@ -346,21 +371,48 @@ Proof.
   eelim Mem.fresh_block_alloc; eauto. eapply (m_valid P); eauto.
 Qed.
 
+Lemma range_split':
+  forall b lo hi mid,
+    lo <= mid <= hi ->
+    massert_eqv (range b lo hi)
+                (range b lo mid ** range b mid hi).
+Proof.
+  intros ** HR.
+  constructor; constructor.
+  - intros m HH.
+    inversion HH as [Hlo [Hhi Hperm]].
+    split; constructor; repeat split.
+    + assumption.
+    + omega.
+    + intros. apply Hperm. omega.
+    + omega.
+    + exact Hhi.
+    + intros. apply Hperm. omega.
+    + red; simpl; intros; omega.
+  - intros. simpl in *. intuition.
+  - intros m HH.
+    inversion_clear HH as [Hlm [Hmh Hdisj]].
+    inversion_clear Hlm as [Hlo [Hmid Hperm]].
+    inversion_clear Hmh as [Hmid' [Hhi Hperm']].
+    constructor; repeat split.
+    + assumption.
+    + assumption.
+    + intros i k p Hi.
+      destruct (Z.lt_ge_cases i mid); intuition.
+  - intros ** ofs Hfoot. simpl in *.
+    destruct (Z.lt_ge_cases ofs mid); intuition.
+Qed.
+
 Lemma range_split:
   forall b lo hi P mid m,
   lo <= mid <= hi ->
   m |= range b lo hi ** P ->
   m |= range b lo mid ** range b mid hi ** P.
 Proof.
-  intros. rewrite <- sep_assoc. eapply sep_imp; eauto. 
-  split; simpl; intros.
-- intuition auto.
-+ omega.
-+ apply H5; omega.
-+ omega.
-+ apply H5; omega.
-+ red; simpl; intros; omega.
-- intuition omega.
+  intros.
+  rewrite <-sep_assoc.
+  rewrite range_split' with (1:=H) in H0.
+  assumption.
 Qed.
 
 Lemma range_drop_left:
@@ -499,6 +551,26 @@ Proof.
   eauto with mem.
   exists v; auto.
 - auto.
+- auto.
+Qed.
+
+Lemma range_contains':
+  forall chunk b ofs,
+    (Memdata.align_chunk chunk | ofs) ->
+    massert_imp (range b ofs (ofs + Memdata.size_chunk chunk))
+                (contains chunk b ofs (fun v => True)).
+Proof.
+  intros. constructor.
+  intros. destruct H0 as (D & E & F).
+  assert (Memory.Mem.valid_access m chunk b ofs Memtype.Freeable).
+  { split; auto. red; auto. }
+  split.
+- generalize (Memdata.size_chunk_pos chunk).
+  unfold Integers.Int.max_unsigned. omega.
+- split; [assumption|].
+  destruct (Memory.Mem.valid_access_load m chunk b ofs) as [v LOAD].
+  eauto with mem.
+  exists v; auto.
 - auto.
 Qed.
 
