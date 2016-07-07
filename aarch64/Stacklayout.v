@@ -50,12 +50,12 @@ Definition make_env (b: bounds) : frame_env :=
 Lemma frame_env_separated:
   forall b sp m P,
   let fe := make_env b in
-  m |= range sp 0 (fe_stack_data fe) ** range sp (fe_stack_data fe + bound_stack_data b) (fe_size fe) ** P ->
-  m |= range sp (fe_ofs_local fe) (fe_ofs_local fe + 4 * bound_local b)
-       ** range sp fe_ofs_arg (fe_ofs_arg + 4 * bound_outgoing b)
-       ** range sp (fe_ofs_link fe) (fe_ofs_link fe + size_chunk Mptr)
-       ** range sp (fe_ofs_retaddr fe) (fe_ofs_retaddr fe + size_chunk Mptr)
-       ** range sp (fe_ofs_callee_save fe) (size_callee_save_area b (fe_ofs_callee_save fe))
+  m |= range_f sp 0 (fe_stack_data fe) ** range_f sp (fe_stack_data fe + bound_stack_data b) (fe_size fe) ** P ->
+  m |= range_f sp (fe_ofs_local fe) (fe_ofs_local fe + 4 * bound_local b)
+       ** range_f sp fe_ofs_arg (fe_ofs_arg + 4 * bound_outgoing b)
+       ** range_f sp (fe_ofs_link fe) (fe_ofs_link fe + size_chunk Mptr)
+       ** range_f sp (fe_ofs_retaddr fe) (fe_ofs_retaddr fe + size_chunk Mptr)
+       ** range_f sp (fe_ofs_callee_save fe) (size_callee_save_area b (fe_ofs_callee_save fe))
        ** P.
 Proof.
 Local Opaque Z.add Z.mul sepconj range.
