@@ -556,19 +556,19 @@ Qed.
 
 Lemma range_contains':
   forall chunk b ofs,
-    (Memdata.align_chunk chunk | ofs) ->
-    massert_imp (range b ofs (ofs + Memdata.size_chunk chunk))
+    (align_chunk chunk | ofs) ->
+    massert_imp (range b ofs (ofs + size_chunk chunk))
                 (contains chunk b ofs (fun v => True)).
 Proof.
   intros. constructor.
   intros. destruct H0 as (D & E & F).
-  assert (Memory.Mem.valid_access m chunk b ofs Memtype.Freeable).
+  assert (Mem.valid_access m chunk b ofs Freeable).
   { split; auto. red; auto. }
   split.
 - generalize (Memdata.size_chunk_pos chunk).
   unfold Ptrofs.max_unsigned. omega.
 - split; [assumption|].
-  destruct (Memory.Mem.valid_access_load m chunk b ofs) as [v LOAD].
+  destruct (Mem.valid_access_load m chunk b ofs) as [v LOAD].
   eauto with mem.
   exists v; auto.
 - auto.
