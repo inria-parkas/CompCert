@@ -144,18 +144,18 @@ Local Opaque Z.add Z.mul Z.divide.
 
 Lemma contains_get_stack:
   forall spec m ty sp ofs,
-  m |= contains (chunk_of_type ty) sp ofs spec ->
+  m |= contains_f (chunk_of_type ty) sp ofs spec ->
   exists v, load_stack m (Vptr sp Ptrofs.zero) ty (Ptrofs.repr ofs) = Some v /\ spec v.
 Proof.
   intros. unfold load_stack.
   replace (Val.offset_ptr (Vptr sp Ptrofs.zero) (Ptrofs.repr ofs)) with (Vptr sp (Ptrofs.repr ofs)).
-  eapply loadv_rule; eauto.
+  eapply loadv_rule; eauto using perm_F_any.
   simpl. rewrite Ptrofs.add_zero_l; auto.
 Qed.
 
 Lemma hasvalue_get_stack:
   forall ty m sp ofs v,
-  m |= hasvalue (chunk_of_type ty) sp ofs v ->
+  m |= hasvalue_f (chunk_of_type ty) sp ofs v ->
   load_stack m (Vptr sp Ptrofs.zero) ty (Ptrofs.repr ofs) = Some v.
 Proof.
   intros. exploit contains_get_stack; eauto. intros (v' & A & B). congruence.
@@ -163,15 +163,15 @@ Qed.
 
 Lemma contains_set_stack:
   forall (spec: val -> Prop) v spec1 m ty sp ofs P,
-  m |= contains (chunk_of_type ty) sp ofs spec1 ** P ->
+  m |= contains_f (chunk_of_type ty) sp ofs spec1 ** P ->
   spec (Val.load_result (chunk_of_type ty) v) ->
   exists m',
       store_stack m (Vptr sp Ptrofs.zero) ty (Ptrofs.repr ofs) v = Some m'
-  /\ m' |= contains (chunk_of_type ty) sp ofs spec ** P.
+  /\ m' |= contains_f (chunk_of_type ty) sp ofs spec ** P.
 Proof.
   intros. unfold store_stack.
   replace (Val.offset_ptr (Vptr sp Ptrofs.zero) (Ptrofs.repr ofs)) with (Vptr sp (Ptrofs.repr ofs)).
-  eapply storev_rule; eauto.
+  eapply storev_rule; eauto using perm_F_any.
   simpl. rewrite Ptrofs.add_zero_l; auto.
 Qed.
 
@@ -278,7 +278,7 @@ Qed.
 
 Lemma initial_locations:
   forall j sp pos bound P sl ls m,
-  m |= range sp pos (pos + 4 * bound) ** P ->
+  m |= range_f sp pos (pos + 4 * bound) ** P ->
   (8 | pos) ->
   (forall ofs ty, ls (S sl ofs ty) = Vundef) ->
   m |= contains_locations j sp pos bound sl ls ** P.
@@ -326,7 +326,7 @@ Fixpoint contains_callee_saves (j: meminj) (sp: block) (pos: Z) (rl: list mreg) 
       let ty := mreg_type r in
       let sz := AST.typesize ty in
       let pos1 := align pos sz in
-      contains (chunk_of_type ty) sp pos1 (fun v => Val.inject j (ls (R r)) v)
+      contains_f (chunk_of_type ty) sp pos1 (fun v => Val.inject j (ls (R r)) v)
       ** contains_callee_saves j sp (pos1 + sz) rl ls
   end.
 
@@ -369,14 +369,14 @@ represents the Linear stack data. *)
 Definition frame_contents_1 (j: meminj) (sp: block) (ls ls0: locset) (parent retaddr: val) :=
     contains_locations j sp fe.(fe_ofs_local) b.(bound_local) Local ls
  ** contains_locations j sp fe_ofs_arg b.(bound_outgoing) Outgoing ls
- ** hasvalue Mptr sp fe.(fe_ofs_link) parent
- ** hasvalue Mptr sp fe.(fe_ofs_retaddr) retaddr
+ ** hasvalue_f Mptr sp fe.(fe_ofs_link) parent
+ ** hasvalue_f Mptr sp fe.(fe_ofs_retaddr) retaddr
  ** contains_callee_saves j sp fe.(fe_ofs_callee_save) b.(used_callee_save) ls0.
 
 Definition frame_contents (j: meminj) (sp: block) (ls ls0: locset) (parent retaddr: val) :=
   mconj (frame_contents_1 j sp ls ls0 parent retaddr)
-        (range sp 0 fe.(fe_stack_data) **
-         range sp (fe.(fe_stack_data) + b.(bound_stack_data)) fe.(fe_size)).
+        (range_f sp 0 fe.(fe_stack_data) **
+         range_f sp (fe.(fe_stack_data) + b.(bound_stack_data)) fe.(fe_size)).
 
 (** Accessing components of the frame. *)
 
@@ -916,7 +916,7 @@ Hypothesis wt_ls: forall r, Val.has_type (ls (R r)) (mreg_type r).
 Lemma save_callee_save_rec_correct:
   forall k l pos rs m P,
   (forall r, In r l -> is_callee_save r = true) ->
-  m |= range sp pos (size_callee_save_area_rec l pos) ** P ->
+  m |= range_f sp pos (size_callee_save_area_rec l pos) ** P ->
   agree_regs j ls rs ->
   exists rs', exists m',
      star step tge
@@ -946,7 +946,7 @@ Local Opaque mreg_type.
   apply range_drop_left with (mid := pos1) in SEP; [ | lia ].
   apply range_split with (mid := pos1 + sz) in SEP; [ | lia ].
   unfold sz at 1 in SEP. rewrite <- size_type_chunk in SEP.
-  apply range_contains in SEP; auto.
+  rewrite range_contains in SEP; auto with mem.
   exploit (contains_set_stack (fun v' => Val.inject j (ls (R r)) v') (rs r)).
   eexact SEP.
   apply load_result_inject; [auto|apply wt_ls].
@@ -1003,7 +1003,7 @@ Qed.
 
 Lemma save_callee_save_correct:
   forall j ls ls0 rs sp cs fb k m P,
-  m |= range sp fe.(fe_ofs_callee_save) (size_callee_save_area b fe.(fe_ofs_callee_save)) ** P ->
+  m |= range_f sp fe.(fe_ofs_callee_save) (size_callee_save_area b fe.(fe_ofs_callee_save)) ** P ->
   (forall r, Val.has_type (ls (R r)) (mreg_type r)) ->
   agree_callee_save ls ls0 ->
   agree_regs j ls rs ->
@@ -1089,22 +1089,22 @@ Local Opaque b fe.
   clear SEP. intros (j' & SEP & INCR & SAME).
   (* Remember the freeable permissions using a mconj *)
   assert (SEPCONJ:
-    m2' |= mconj (range sp' 0 (fe_stack_data fe) ** range sp' (fe_stack_data fe + bound_stack_data b) (fe_size fe))
-                 (range sp' 0 (fe_stack_data fe) ** range sp' (fe_stack_data fe + bound_stack_data b) (fe_size fe))
+    m2' |= mconj (range_f sp' 0 (fe_stack_data fe) ** range_f sp' (fe_stack_data fe + bound_stack_data b) (fe_size fe))
+                 (range_f sp' 0 (fe_stack_data fe) ** range_f sp' (fe_stack_data fe + bound_stack_data b) (fe_size fe))
            ** minjection j' m2 ** globalenv_inject ge j' ** P).
   { apply mconj_intro; rewrite sep_assoc; assumption. }
   (* Dividing up the frame *)
   apply (frame_env_separated b) in SEP. replace (make_env b) with fe in SEP by auto.
   (* Store of parent *)
   rewrite sep_swap3 in SEP.
-  apply (range_contains Mptr) in SEP; [|tauto].
+  rewrite range_contains with (chunk:=Mptr) in SEP; [|apply perm_F_any|tauto].
   exploit (contains_set_stack (fun v' => v' = parent) parent (fun _ => True) m2' Tptr).
   rewrite chunk_of_Tptr; eexact SEP. apply Val.load_result_same; auto.
   clear SEP; intros (m3' & STORE_PARENT & SEP).
   rewrite sep_swap3 in SEP.
   (* Store of return address *)
   rewrite sep_swap4 in SEP.
-  apply (range_contains Mptr) in SEP; [|tauto].
+  rewrite range_contains with (chunk:=Mptr) in SEP; [|apply perm_F_any|tauto].
   exploit (contains_set_stack (fun v' => v' = ra) ra (fun _ => True) m3' Tptr).
   rewrite chunk_of_Tptr; eexact SEP. apply Val.load_result_same; auto.
   clear SEP; intros (m4' & STORE_RETADDR & SEP).
@@ -2181,3 +2181,4 @@ Proof.
 Qed.
 
 End PRESERVATION.
+
