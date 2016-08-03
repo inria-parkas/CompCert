@@ -465,15 +465,16 @@ Qed.
 
 Program Definition contains (chunk: memory_chunk) (b: block) (ofs: Z) (spec: val -> Prop) : massert := {|
   m_pred := fun m =>
-       0 <= ofs <= Int.max_unsigned
+       0 <= ofs /\ ofs + size_chunk chunk <= Int.modulus
     /\ Mem.valid_access m chunk b ofs Freeable
     /\ exists v, Mem.load chunk m b ofs = Some v /\ spec v;
   m_footprint := fun b' ofs' => b' = b /\ ofs <= ofs' < ofs + size_chunk chunk
 |}.
 Next Obligation.
-  rename H2 into v. split;[|split].
+  rename H3 into v. split;[|split;[|split]].
 - auto.
-- destruct H1; split; auto. red; intros; eapply Mem.perm_unchanged_on; eauto. simpl; auto.
+- auto.
+- destruct H2; split; auto. red; intros; eapply Mem.perm_unchanged_on; eauto. simpl; auto.
 - exists v. split; auto. eapply Mem.load_unchanged_on; eauto. simpl; auto.
 Qed.
 Next Obligation.
@@ -485,7 +486,11 @@ Lemma contains_no_overflow:
   m |= contains chunk b ofs spec ->
   0 <= ofs <= Int.max_unsigned.
 Proof.
-  intros. simpl in H. tauto.
+  intros. simpl in H.
+  destruct H as (H1 & H2 & H3).
+  split; [assumption|].
+  generalize (size_chunk_pos chunk).
+  unfold Int.max_unsigned. omega.
 Qed.
 
 Lemma load_rule:
@@ -493,7 +498,7 @@ Lemma load_rule:
   m |= contains chunk b ofs spec ->
   exists v, Mem.load chunk m b ofs = Some v /\ spec v.
 Proof.
-  intros. destruct H as (D & E & v & F & G).
+  intros. destruct H as (D & E & F & v & G & H).
   exists v; auto.
 Qed.
 
@@ -535,25 +540,6 @@ Proof.
   simpl. rewrite Int.unsigned_repr; auto. eapply contains_no_overflow. eapply sep_pick1; eauto.
 Qed.
 
-Lemma range_contains:
-  forall chunk b ofs P m,
-  m |= range b ofs (ofs + size_chunk chunk) ** P ->
-  (align_chunk chunk | ofs) ->
-  m |= contains chunk b ofs (fun v => True) ** P.
-Proof.
-  intros. destruct H as (A & B & C). destruct A as (D & E & F).
-  split; [|split].
-- assert (Mem.valid_access m chunk b ofs Freeable).
-  { split; auto. red; auto. }
-  split. generalize (size_chunk_pos chunk). unfold Int.max_unsigned. omega.
-  split. auto.
-+ destruct (Mem.valid_access_load m chunk b ofs) as [v LOAD].
-  eauto with mem.
-  exists v; auto.
-- auto.
-- auto.
-Qed.
-
 Lemma range_contains':
   forall chunk b ofs,
     (align_chunk chunk | ofs) ->
@@ -564,14 +550,51 @@ Proof.
   intros. destruct H0 as (D & E & F).
   assert (Mem.valid_access m chunk b ofs Freeable).
   { split; auto. red; auto. }
-  split.
-- generalize (size_chunk_pos chunk).
-  unfold Int.max_unsigned. omega.
+  split; [|split].
+- generalize (size_chunk_pos chunk). omega.
+- assumption.
 - split; [assumption|].
   destruct (Mem.valid_access_load m chunk b ofs) as [v LOAD].
   eauto with mem.
   exists v; auto.
 - auto.
+Qed.
+
+Lemma range_contains:
+  forall chunk b ofs P m,
+  m |= range b ofs (ofs + size_chunk chunk) ** P ->
+  (align_chunk chunk | ofs) ->
+  m |= contains chunk b ofs (fun v => True) ** P.
+Proof.
+  intros.
+  rewrite range_contains' in H; assumption.
+Qed.
+
+Lemma contains_range':
+  forall chunk b ofs spec,
+    massert_imp (contains chunk b ofs spec)
+                (range b ofs (ofs + size_chunk chunk)).
+Proof.
+  intros.
+  split.
+- intros. destruct H as (A & B & C & D).
+  split; [|split]; try assumption.
+  destruct C as (C1 & C2).
+  intros i k p Hr.
+  specialize (C1 _ Hr).
+  eapply Mem.perm_cur in C1.
+  apply Mem.perm_implies with (1:=C1).
+  apply perm_F_any.
+- trivial.
+Qed.
+
+Lemma contains_range:
+  forall chunk b ofs spec P m,
+  m |= contains chunk b ofs spec ** P ->
+  m |= range b ofs (ofs + size_chunk chunk) ** P.
+Proof.
+  intros.
+  rewrite contains_range' in H; assumption.
 Qed.
 
 Lemma contains_imp:
