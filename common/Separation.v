@@ -115,6 +115,23 @@ Qed.
 
 Global Hint Resolve massert_imp_refl massert_eqv_refl : core.
 
+Instance footprint_massert_imp_Proper:
+  Proper (massert_imp --> eq ==> eq ==> Basics.impl) m_footprint.
+Proof.
+  destruct 1. repeat intro. subst. intuition.
+Qed.
+
+Instance footprint_massert_eqv_Proper:
+  Proper (massert_eqv ==> eq ==> eq ==> iff) m_footprint.
+Proof.
+  intros P Q HPQ b' b Hbeq ofs' ofs Hoeq.
+  subst.
+  destruct HPQ as [HPQ HQP].
+  split; intro HH.
+  now rewrite HQP.
+  now rewrite HPQ.
+Qed.
+
 (** * Separating conjunction *)
 
 Definition disjoint_footprint (P Q: massert) : Prop :=
@@ -315,6 +332,12 @@ Proof.
   simpl; intros. intuition auto. red; simpl; tauto.
 Qed.
 
+Lemma sep_pure':
+  forall P m, m |= pure P <-> P.
+Proof.
+  simpl; intros. intuition auto. 
+Qed.
+
 (** A range of bytes, with full permissions and unspecified contents. *)
 
 Program Definition range (b: block) (lo hi: Z) : massert := {|
@@ -344,6 +367,59 @@ Proof.
 - apply (m_invar P) with m; auto. eapply Mem.alloc_unchanged_on; eauto.
 - red; simpl. intros. destruct H3; subst b0.
   eelim Mem.fresh_block_alloc; eauto. eapply (m_valid P); eauto.
+Qed.
+
+Lemma free_rule:
+forall P m b lo hi,
+  m |= range b lo hi ** P ->
+  exists m',
+    Mem.free m b lo hi = Some m' /\ m' |= P.
+Proof.
+  intros P m b lo hi Hr.
+  destruct Hr as ((Hlo & Hhi & Hperm) & HP & Hdj).
+  assert (Mem.range_perm m b lo hi Cur Freeable) as Hrp
+    by (intros ? ?; now apply Hperm).
+  apply Mem.range_perm_free in Hrp.
+  destruct Hrp as (m2 & Hfree).
+  exists m2.
+  split; [assumption|].
+  apply Mem.free_unchanged_on with (P:=m_footprint P) in Hfree.
+  now apply m_invar with (1:=HP) (2:=Hfree).
+  intros i Hr HfP.
+  apply Hdj with (2:=HfP).
+  now split.
+Qed.
+
+Lemma range_split':
+  forall b lo hi mid,
+    lo <= mid <= hi ->
+    massert_eqv (range b lo hi)
+                (range b lo mid ** range b mid hi).
+Proof.
+  intros * HR.
+  constructor; constructor.
+  - intros m HH.
+    inversion HH as [Hlo [Hhi Hperm]].
+    split; constructor; repeat split.
+    + assumption.
+    + omega.
+    + intros. apply Hperm. omega.
+    + omega.
+    + exact Hhi.
+    + intros. apply Hperm. omega.
+    + red; simpl; intros; omega.
+  - intros. simpl in *. intuition.
+  - intros m HH.
+    inversion_clear HH as [Hlm [Hmh Hdisj]].
+    inversion_clear Hlm as [Hlo [Hmid Hperm]].
+    inversion_clear Hmh as [Hmid' [Hhi Hperm']].
+    constructor; repeat split.
+    + assumption.
+    + assumption.
+    + intros i k p Hi.
+      destruct (Z.lt_ge_cases i mid); intuition.
+  - intros * Hfoot. simpl in *.
+    destruct (Z.lt_ge_cases ofs mid); intuition.
 Qed.
 
 Lemma range_split:
@@ -486,6 +562,20 @@ Lemma storev_rule:
 Proof.
   intros. exploit store_rule; eauto. intros (m' & A & B). exists m'; split; auto.
   simpl. rewrite Ptrofs.unsigned_repr; auto. eapply contains_no_overflow. eapply sep_pick1; eauto.
+Qed.
+
+Lemma storev_rule2:
+  forall chunk m m' b ofs v (spec1 spec: val -> Prop) P,
+    m |= contains chunk b ofs spec1 ** P ->
+    spec (Val.load_result chunk v) ->
+    Memory.Mem.storev chunk m (Vptr b (Int.repr ofs)) v = Some m' ->
+    m' |= contains chunk b ofs spec ** P.
+Proof.
+  intros ** Hm Hspec Hstore.
+  apply storev_rule with (1:=Hm) in Hspec.
+  destruct Hspec as [m'' [Hmem Hspec]].
+  rewrite Hmem in Hstore. injection Hstore.
+  intro; subst. assumption.
 Qed.
 
 Lemma range_contains':
