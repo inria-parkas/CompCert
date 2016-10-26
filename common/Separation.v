@@ -568,10 +568,10 @@ Lemma storev_rule2:
   forall chunk m m' b ofs v (spec1 spec: val -> Prop) P,
     m |= contains chunk b ofs spec1 ** P ->
     spec (Val.load_result chunk v) ->
-    Memory.Mem.storev chunk m (Vptr b (Int.repr ofs)) v = Some m' ->
+    Memory.Mem.storev chunk m (Vptr b (Ptrofs.repr ofs)) v = Some m' ->
     m' |= contains chunk b ofs spec ** P.
 Proof.
-  intros ** Hm Hspec Hstore.
+  intros * Hm Hspec Hstore.
   apply storev_rule with (1:=Hm) in Hspec.
   destruct Hspec as [m'' [Hmem Hspec]].
   rewrite Hmem in Hstore. injection Hstore.
