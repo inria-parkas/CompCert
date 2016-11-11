@@ -13,4 +13,8 @@
 (*                                                                     *)
 (* *********************************************************************)
 
+val elab_int_constant : Cabs.cabsloc -> string -> int64 * C.ikind
+val elab_float_constant : Cabs.floatInfo -> C.float_cst * C.fkind
+val elab_char_constant : Cabs.cabsloc -> bool -> int64 list -> int64
+
 val elab_file : Cabs.definition list -> C.program
