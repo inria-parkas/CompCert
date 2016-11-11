@@ -396,29 +396,35 @@ let elab_float_constant f =
   (v, ty)
 
 let elab_char_constant loc wide chars =
-  let len = List.length chars in
   let nbits = if wide then 8 * !config.sizeof_wchar else 8 in
+  (* Treat multi-char constants as a number in base 2^nbits *)
   let max_digit = Int64.shift_left 1L nbits in
-  (* Treat multi-character constants as a number in base 2^nbits.
-     It must fit in type int for a normal constant and in type wchar_t
-     for a wide constant. *)
-  let v =
-    if len > (if wide then 1 else !config.sizeof_int) then begin
-      error loc "%d-character constant too long for its type" len;
-      0L
-    end else
-      List.fold_left
-        (fun acc d ->
-          if d < 0L || d >= max_digit then
+  let max_val = Int64.shift_left 1L (64 - nbits) in
+  let v,_ =
+    List.fold_left
+      (fun (acc,err) d ->
+        if not err then begin
+          let overflow = acc < 0L || acc >= max_val
+          and out_of_range = d < 0L || d >= max_digit in
+          if overflow then
+            error loc "character constant too long for its type";
+          if out_of_range then
             error loc "escape sequence is out of range (code 0x%LX)" d;
-          Int64.add (Int64.shift_left acc nbits) d)
-        0L chars in
-  (* C99 6.4.4.4 items 10 and 11:
-       single-character constant -> represent at type char
-       multi-character constant -> represent at type int
-       wide character constant -> represent at type wchar_t *)
-  Ceval.normalize_int v
-    (if wide then wchar_ikind() else if len = 1 then IChar else IInt)
+          Int64.add (Int64.shift_left acc nbits) d,overflow || out_of_range
+        end else
+          Int64.add (Int64.shift_left acc nbits) d,true
+      )
+      (0L,false) chars in
+  if not (integer_representable v IInt) then
+    warning loc Unnamed "character constant too long for its type";
+  (* C99 6.4.4.4 item 10: single character -> represent at type char
+     or wchar_t *)
+  let k =
+    (if List.length chars = 1 then
+       if wide then wchar_ikind() else IChar
+     else
+       IInt) in
+  (Ceval.normalize_int v k, k)
 
 let elab_string_literal loc wide chars =
   let nbits = if wide then 8 * !config.sizeof_wchar else 8 in
@@ -446,8 +452,7 @@ let elab_constant loc = function
       let (v, fk) = elab_float_constant f in
       CFloat(v, fk)
   | CONST_CHAR(wide, s) ->
-      let ikind = if wide then wchar_ikind () else IInt in
-      CInt(elab_char_constant loc wide s, ikind, "")
+      CInt(fst (elab_char_constant loc wide s), IInt, "")
   | CONST_STRING(wide, s) ->
       elab_string_literal loc wide s
 
