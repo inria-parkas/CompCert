@@ -239,11 +239,12 @@ let elab_char_constant loc wide chars =
     warning loc "character constant cannot be represented at type 'int'";
   (* C99 6.4.4.4 item 10: single character -> represent at type char
      or wchar_t *)
-  Ceval.normalize_int v
+  let k =
     (if List.length chars = 1 then
        if wide then wchar_ikind() else IChar
      else
-       IInt)
+       IInt) in
+  (Ceval.normalize_int v k, k)
 
 let elab_string_literal loc wide chars =
   let nbits = if wide then 8 * !config.sizeof_wchar else 8 in
@@ -271,7 +272,7 @@ let elab_constant loc = function
       let (v, fk) = elab_float_constant f in
       CFloat(v, fk)
   | CONST_CHAR(wide, s) ->
-      CInt(elab_char_constant loc wide s, IInt, "")
+      CInt(fst (elab_char_constant loc wide s), IInt, "")
   | CONST_STRING(wide, s) ->
       elab_string_literal loc wide s
 
