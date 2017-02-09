@@ -358,16 +358,16 @@ Qed.
 Notation range := (range' true).
 Notation range_w := (range' false).
 
-Lemma range_range_w:
-  forall b lo hi,
-    massert_imp (range b lo hi) (range_w b lo hi).
+Lemma range'_range_w:
+  forall {f} b lo hi,
+    massert_imp (range' f b lo hi) (range_w b lo hi).
 Proof.
   constructor; auto.
   destruct 1 as (Hlo & Hhi & Hperm).
   repeat split; auto.
   intros i k Hoff.
-  eapply Mem.perm_implies; eauto using perm_F_any.
-Qed.  
+  destruct f; eapply Mem.perm_implies; eauto using perm_F_any, perm_refl.
+Qed.
 
 Lemma alloc_rule:
   forall m lo hi b m' P,
@@ -526,14 +526,14 @@ Qed.
 Notation contains := (contains' true).
 Notation contains_w := (contains' false).
 
-Lemma contains_contains_w:
-  forall chunk b ofs spec,
-    massert_imp (contains chunk b ofs spec) (contains_w chunk b ofs spec).
+Lemma contains'_contains_w:
+  forall {f} chunk b ofs spec,
+    massert_imp (contains' f chunk b ofs spec) (contains_w chunk b ofs spec).
 Proof.
   constructor; auto.
   inversion 1 as (Hlo & Hhi & Hac & v & Hload & Hspec).
   eapply Mem.valid_access_implies with (p2:=Writable) in Hac;
-    auto using perm_F_any.
+    destruct f; auto using perm_F_any, perm_refl.
   repeat (split; eauto).
 Qed.
   
@@ -687,12 +687,12 @@ Definition hasvalue' (f: bool) (chunk: memory_chunk) (b: block) (ofs: Z) (v: val
 Notation hasvalue := (hasvalue' true).
 Notation hasvalue_w := (hasvalue' false).
 
-Lemma hasvalue_hasvalue_w:
-  forall chunk b ofs v,
-    massert_imp (hasvalue chunk b ofs v) (hasvalue_w chunk b ofs v).
+Lemma hasvalue'_hasvalue_w:
+  forall {f} chunk b ofs v,
+    massert_imp (hasvalue' f chunk b ofs v) (hasvalue_w chunk b ofs v).
 Proof.
   constructor; auto.
-  apply contains_contains_w.
+  apply contains'_contains_w.
 Qed.
 
 Lemma store_rule':
