@@ -338,20 +338,36 @@ Proof.
   simpl; intros. intuition auto. 
 Qed.
 
-(** A range of bytes, with full permissions and unspecified contents. *)
+(** A range of bytes with unspecified contents, and either full permissions
+    (f = true) or only writable permissions (f = false). *)
 
-Program Definition range (b: block) (lo hi: Z) : massert := {|
+Program Definition range' (f: bool) (b: block) (lo hi: Z) : massert := {|
   m_pred := fun m =>
        0 <= lo /\ hi <= Ptrofs.modulus
-    /\ (forall i k p, lo <= i < hi -> Mem.perm m b i k p);
+    /\ (forall i k, lo <= i < hi -> Mem.perm m b i k
+                                             (if f then Freeable else Writable));
   m_footprint := fun b' ofs' => b' = b /\ lo <= ofs' < hi
 |}.
 Next Obligation.
   split; auto. split; auto. intros. eapply Mem.perm_unchanged_on; eauto. simpl; auto.
 Qed.
 Next Obligation.
-  apply Mem.perm_valid_block with ofs Cur Freeable; auto.
+  eapply Mem.perm_valid_block with ofs Cur _; auto.
 Qed.
+
+Notation range := (range' true).
+Notation range_w := (range' false).
+
+Lemma range_range_w:
+  forall b lo hi,
+    massert_imp (range b lo hi) (range_w b lo hi).
+Proof.
+  constructor; auto.
+  destruct 1 as (Hlo & Hhi & Hperm).
+  repeat split; auto.
+  intros i k Hoff.
+  eapply Mem.perm_implies; eauto using perm_F_any.
+Qed.  
 
 Lemma alloc_rule:
   forall m lo hi b m' P,
@@ -391,10 +407,10 @@ Proof.
 Qed.
 
 Lemma range_split':
-  forall b lo hi mid,
+  forall {f} b lo hi mid,
     lo <= mid <= hi ->
-    massert_eqv (range b lo hi)
-                (range b lo mid ** range b mid hi).
+    massert_eqv (range' f b lo hi)
+                (range' f b lo mid ** range' f b mid hi).
 Proof.
   intros * HR.
   constructor; constructor.
@@ -416,17 +432,17 @@ Proof.
     constructor; repeat split.
     + assumption.
     + assumption.
-    + intros i k p Hi.
+    + intros i k Hi.
       destruct (Z.lt_ge_cases i mid); intuition.
   - intros * Hfoot. simpl in *.
     destruct (Z.lt_ge_cases ofs mid); intuition.
 Qed.
 
 Lemma range_split:
-  forall b lo hi P mid m,
+  forall {f} b lo hi P mid m,
   lo <= mid <= hi ->
-  m |= range b lo hi ** P ->
-  m |= range b lo mid ** range b mid hi ** P.
+  m |= range' f b lo hi ** P ->
+  m |= range' f b lo mid ** range' f b mid hi ** P.
 Proof.
   intros. rewrite <- sep_assoc. eapply sep_imp; eauto.
   split; simpl; intros.
@@ -440,29 +456,29 @@ Proof.
 Qed.
 
 Lemma range_drop_left:
-  forall b lo hi P mid m,
+  forall {f} b lo hi P mid m,
   lo <= mid <= hi ->
-  m |= range b lo hi ** P ->
-  m |= range b mid hi ** P.
+  m |= range' f b lo hi ** P ->
+  m |= range' f b mid hi ** P.
 Proof.
-  intros. apply sep_drop with (range b lo mid). apply range_split; auto.
+  intros. apply sep_drop with (range' f b lo mid). apply range_split; auto.
 Qed.
 
 Lemma range_drop_right:
-  forall b lo hi P mid m,
+  forall {f} b lo hi P mid m,
   lo <= mid <= hi ->
-  m |= range b lo hi ** P ->
-  m |= range b lo mid ** P.
+  m |= range' f b lo hi ** P ->
+  m |= range' f b lo mid ** P.
 Proof.
-  intros. apply sep_drop2 with (range b mid hi). apply range_split; auto.
+  intros. apply sep_drop2 with (range' f b mid hi). apply range_split; auto.
 Qed.
 
 Lemma range_split_2:
-  forall b lo hi P mid al m,
+  forall {f} b lo hi P mid al m,
   lo <= align mid al <= hi ->
   al > 0 ->
-  m |= range b lo hi ** P ->
-  m |= range b lo mid ** range b (align mid al) hi ** P.
+  m |= range' f b lo hi ** P ->
+  m |= range' f b lo mid ** range' f b (align mid al) hi ** P.
 Proof.
   intros. rewrite <- sep_assoc. eapply sep_imp; eauto.
   assert (mid <= align mid al) by (apply align_le; auto).
@@ -477,20 +493,22 @@ Proof.
 Qed.
 
 Lemma range_preserved:
-  forall m m' b lo hi,
-  m |= range b lo hi ->
+  forall {f} m m' b lo hi,
+  m |= range' f b lo hi ->
   (forall i k p, lo <= i < hi -> Mem.perm m b i k p -> Mem.perm m' b i k p) ->
-  m' |= range b lo hi.
+  m' |= range' f b lo hi.
 Proof.
   intros. destruct H as (A & B & C). simpl; intuition auto.
 Qed.
 
-(** A memory area that contains a value sastifying a given predicate *)
+(** A memory area that contains a value satisfying a given predicate.
+    The permissions on the memory are either full (f = true) or only
+    writable (f = false). *)
 
-Program Definition contains (chunk: memory_chunk) (b: block) (ofs: Z) (spec: val -> Prop) : massert := {|
+Program Definition contains' (f: bool) (chunk: memory_chunk) (b: block) (ofs: Z) (spec: val -> Prop) : massert := {|
   m_pred := fun m =>
        0 <= ofs /\ ofs + size_chunk chunk <= Ptrofs.modulus
-    /\ Mem.valid_access m chunk b ofs Freeable
+    /\ Mem.valid_access m chunk b ofs (if f then Freeable else Writable)
     /\ exists v, Mem.load chunk m b ofs = Some v /\ spec v;
   m_footprint := fun b' ofs' => b' = b /\ ofs <= ofs' < ofs + size_chunk chunk
 |}.
@@ -505,9 +523,23 @@ Next Obligation.
   eauto with mem.
 Qed.
 
+Notation contains := (contains' true).
+Notation contains_w := (contains' false).
+
+Lemma contains_contains_w:
+  forall chunk b ofs spec,
+    massert_imp (contains chunk b ofs spec) (contains_w chunk b ofs spec).
+Proof.
+  constructor; auto.
+  inversion 1 as (Hlo & Hhi & Hac & v & Hload & Hspec).
+  eapply Mem.valid_access_implies with (p2:=Writable) in Hac;
+    auto using perm_F_any.
+  repeat (split; eauto).
+Qed.
+  
 Lemma contains_no_overflow:
-  forall spec m chunk b ofs,
-  m |= contains chunk b ofs spec ->
+  forall {f} spec m chunk b ofs,
+  m |= contains' f chunk b ofs spec ->
   0 <= ofs <= Ptrofs.max_unsigned.
 Proof.
   intros. simpl in H.
@@ -518,8 +550,8 @@ Proof.
 Qed.
 
 Lemma load_rule:
-  forall spec m chunk b ofs,
-  m |= contains chunk b ofs spec ->
+  forall {f} spec m chunk b ofs,
+  m |= contains' f chunk b ofs spec ->
   exists v, Mem.load chunk m b ofs = Some v /\ spec v.
 Proof.
   intros. destruct H as (D & E & F & v & G & H).
@@ -527,23 +559,23 @@ Proof.
 Qed.
 
 Lemma loadv_rule:
-  forall spec m chunk b ofs,
-  m |= contains chunk b ofs spec ->
+  forall {f} spec m chunk b ofs,
+  m |= contains' f chunk b ofs spec ->
   exists v, Mem.loadv chunk m (Vptr b (Ptrofs.repr ofs)) = Some v /\ spec v.
 Proof.
-  intros. exploit load_rule; eauto. intros (v & A & B). exists v; split; auto.
+  intros. exploit (@load_rule f); eauto. intros (v & A & B). exists v; split; auto.
   simpl. rewrite Ptrofs.unsigned_repr; auto. eapply contains_no_overflow; eauto.
 Qed.
 
 Lemma store_rule:
-  forall chunk m b ofs v (spec1 spec: val -> Prop) P,
-  m |= contains chunk b ofs spec1 ** P ->
+  forall {f} chunk m b ofs v (spec1 spec: val -> Prop) P,
+  m |= contains' f chunk b ofs spec1 ** P ->
   spec (Val.load_result chunk v) ->
   exists m',
-  Mem.store chunk m b ofs v = Some m' /\ m' |= contains chunk b ofs spec ** P.
+  Mem.store chunk m b ofs v = Some m' /\ m' |= contains' f chunk b ofs spec ** P.
 Proof.
   intros. destruct H as (A & B & C). destruct A as (D & E & v0 & F & G).
-  assert (H: Mem.valid_access m chunk b ofs Writable) by eauto with mem.
+  assert (H: Mem.valid_access m chunk b ofs Writable) by (destruct f; eauto with mem).
   destruct (Mem.valid_access_store _ _ _ _ v H) as [m' STORE].
   exists m'; split; auto. simpl. intuition auto.
 - eapply Mem.store_valid_access_1; eauto.
@@ -554,22 +586,22 @@ Proof.
 Qed.
 
 Lemma storev_rule:
-  forall chunk m b ofs v (spec1 spec: val -> Prop) P,
-  m |= contains chunk b ofs spec1 ** P ->
+  forall {f} chunk m b ofs v (spec1 spec: val -> Prop) P,
+  m |= contains' f chunk b ofs spec1 ** P ->
   spec (Val.load_result chunk v) ->
   exists m',
-  Mem.storev chunk m (Vptr b (Ptrofs.repr ofs)) v = Some m' /\ m' |= contains chunk b ofs spec ** P.
+  Mem.storev chunk m (Vptr b (Ptrofs.repr ofs)) v = Some m' /\ m' |= contains' f chunk b ofs spec ** P.
 Proof.
-  intros. exploit store_rule; eauto. intros (m' & A & B). exists m'; split; auto.
+  intros. exploit (@store_rule f); eauto. intros (m' & A & B). exists m'; split; auto.
   simpl. rewrite Ptrofs.unsigned_repr; auto. eapply contains_no_overflow. eapply sep_pick1; eauto.
 Qed.
 
 Lemma storev_rule2:
-  forall chunk m m' b ofs v (spec1 spec: val -> Prop) P,
-    m |= contains chunk b ofs spec1 ** P ->
+  forall {f} chunk m m' b ofs v (spec1 spec: val -> Prop) P,
+    m |= contains' f chunk b ofs spec1 ** P ->
     spec (Val.load_result chunk v) ->
     Memory.Mem.storev chunk m (Vptr b (Ptrofs.repr ofs)) v = Some m' ->
-    m' |= contains chunk b ofs spec ** P.
+    m' |= contains' f chunk b ofs spec ** P.
 Proof.
   intros * Hm Hspec Hstore.
   apply storev_rule with (1:=Hm) in Hspec.
@@ -579,91 +611,104 @@ Proof.
 Qed.
 
 Lemma range_contains':
-  forall chunk b ofs,
+  forall {f} chunk b ofs,
     (align_chunk chunk | ofs) ->
-    massert_imp (range b ofs (ofs + size_chunk chunk))
-                (contains chunk b ofs (fun v => True)).
+    massert_imp (range' f b ofs (ofs + size_chunk chunk))
+                (contains' f chunk b ofs (fun v => True)).
 Proof.
   intros. constructor.
   intros. destruct H0 as (D & E & F).
-  assert (Mem.valid_access m chunk b ofs Freeable).
+  assert (Mem.valid_access m chunk b ofs (if f then Freeable else Writable)).
   { split; auto. red; auto. }
   split; [|split].
 - generalize (size_chunk_pos chunk). omega.
 - assumption.
 - split; [assumption|].
   destruct (Mem.valid_access_load m chunk b ofs) as [v LOAD].
-  eauto with mem.
+  destruct f; eauto with mem.
   exists v; auto.
 - auto.
 Qed.
 
 Lemma range_contains:
-  forall chunk b ofs P m,
-  m |= range b ofs (ofs + size_chunk chunk) ** P ->
+  forall {f} chunk b ofs P m,
+    m |= range' f b ofs (ofs + size_chunk chunk) ** P ->
   (align_chunk chunk | ofs) ->
-  m |= contains chunk b ofs (fun v => True) ** P.
+  m |= contains' f chunk b ofs (fun v => True) ** P.
 Proof.
   intros.
   rewrite range_contains' in H; assumption.
 Qed.
 
 Lemma contains_range':
-  forall chunk b ofs spec,
-    massert_imp (contains chunk b ofs spec)
-                (range b ofs (ofs + size_chunk chunk)).
+  forall {f} chunk b ofs spec,
+    massert_imp (contains' f chunk b ofs spec)
+                (range' f b ofs (ofs + size_chunk chunk)).
 Proof.
   intros.
   split.
 - intros. destruct H as (A & B & C & D).
   split; [|split]; try assumption.
   destruct C as (C1 & C2).
-  intros i k p Hr.
+  intros i k Hr.
   specialize (C1 _ Hr).
   eapply Mem.perm_cur in C1.
   apply Mem.perm_implies with (1:=C1).
-  apply perm_F_any.
+  destruct f; apply perm_refl.
 - trivial.
 Qed.
 
 Lemma contains_range:
-  forall chunk b ofs spec P m,
-  m |= contains chunk b ofs spec ** P ->
-  m |= range b ofs (ofs + size_chunk chunk) ** P.
+  forall {f} chunk b ofs spec P m,
+  m |= contains' f chunk b ofs spec ** P ->
+  m |= range' f b ofs (ofs + size_chunk chunk) ** P.
 Proof.
   intros.
   rewrite contains_range' in H; assumption.
 Qed.
 
 Lemma contains_imp:
-  forall (spec1 spec2: val -> Prop) chunk b ofs,
+  forall {f} (spec1 spec2: val -> Prop) chunk b ofs,
   (forall v, spec1 v -> spec2 v) ->
-  massert_imp (contains chunk b ofs spec1) (contains chunk b ofs spec2).
+  massert_imp (contains' f chunk b ofs spec1) (contains' f chunk b ofs spec2).
 Proof.
   intros; split; simpl; intros.
 - intuition auto. destruct H4 as (v & A & B). exists v; auto.
 - auto.
 Qed.
 
-(** A memory area that contains a given value *)
+(** A memory area that contains a given value.
+    The permissions on the underlying memory are either full (f = true)
+    or only writable (f = false). *)
 
-Definition hasvalue (chunk: memory_chunk) (b: block) (ofs: Z) (v: val) : massert :=
-  contains chunk b ofs (fun v' => v' = v).
+Definition hasvalue' (f: bool) (chunk: memory_chunk) (b: block) (ofs: Z) (v: val) : massert :=
+  contains' f chunk b ofs (fun v' => v' = v).
+
+Notation hasvalue := (hasvalue' true).
+Notation hasvalue_w := (hasvalue' false).
+
+Lemma hasvalue_hasvalue_w:
+  forall chunk b ofs v,
+    massert_imp (hasvalue chunk b ofs v) (hasvalue_w chunk b ofs v).
+Proof.
+  constructor; auto.
+  apply contains_contains_w.
+Qed.
 
 Lemma store_rule':
-  forall chunk m b ofs v (spec1: val -> Prop) P,
-  m |= contains chunk b ofs spec1 ** P ->
+  forall {f} chunk m b ofs v (spec1: val -> Prop) P,
+  m |= contains' f chunk b ofs spec1 ** P ->
   exists m',
-  Mem.store chunk m b ofs v = Some m' /\ m' |= hasvalue chunk b ofs (Val.load_result chunk v) ** P.
+  Mem.store chunk m b ofs v = Some m' /\ m' |= hasvalue' f chunk b ofs (Val.load_result chunk v) ** P.
 Proof.
   intros. eapply store_rule; eauto.
 Qed.
 
 Lemma storev_rule':
-  forall chunk m b ofs v (spec1: val -> Prop) P,
-  m |= contains chunk b ofs spec1 ** P ->
+  forall {f} chunk m b ofs v (spec1: val -> Prop) P,
+  m |= contains' f chunk b ofs spec1 ** P ->
   exists m',
-  Mem.storev chunk m (Vptr b (Ptrofs.repr ofs)) v = Some m' /\ m' |= hasvalue chunk b ofs (Val.load_result chunk v) ** P.
+  Mem.storev chunk m (Vptr b (Ptrofs.repr ofs)) v = Some m' /\ m' |= hasvalue' f chunk b ofs (Val.load_result chunk v) ** P.
 Proof.
   intros. eapply storev_rule; eauto.
 Qed.
