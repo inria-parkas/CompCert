@@ -936,7 +936,7 @@ Local Opaque mreg_type.
   apply range_drop_left with (mid := pos1) in SEP; [ | omega ].
   apply range_split with (mid := pos1 + sz) in SEP; [ | omega ].
   unfold sz at 1 in SEP. rewrite <- size_type_chunk in SEP.
-  apply range_contains in SEP; auto.
+  apply range_contains in SEP; auto with mem.
   exploit (contains_set_stack (fun v' => Val.inject j (ls (R r)) v') (rs r)).
   eexact SEP.
   apply load_result_inject; auto. apply wt_ls.
