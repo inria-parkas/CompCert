@@ -172,6 +172,21 @@ Proof.
 - intuition auto.
 Qed.
 
+Add Morphism disjoint_footprint
+    with signature massert_eqv ==> massert_eqv ==> iff
+    as disjoint_footprint_morph_1.
+Proof.
+  intros p q Hpq r s Hrs.
+  unfold disjoint_footprint.
+  split; intro HH; intros b ofs Hf1 Hf2.
+  - rewrite <-Hpq in Hf1.
+    rewrite <-Hrs in Hf2.
+    now specialize (HH _ _ Hf1 Hf2).
+  - rewrite Hpq in Hf1.
+    rewrite Hrs in Hf2.
+    now specialize (HH _ _ Hf1 Hf2).
+Qed.
+
 Add Morphism sepconj
   with signature massert_eqv ==> massert_eqv ==> massert_eqv
   as sepconj_morph_2.
