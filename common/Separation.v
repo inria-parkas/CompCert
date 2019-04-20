@@ -29,7 +29,7 @@
   frame rule; instead, a weak form of the frame rule is provided
   by the lemmas that help us reason about the logical assertions. *)
 
-Require Import Setoid Program.Basics.
+Require Import Setoid Morphisms Program.Basics.
 Require Import Coqlib Decidableplus.
 Require Import AST Integers Values Memory Events Globalenvs.
 
