@@ -1,5 +1,7 @@
 # Object files, in general
 *.vo
+*.vok
+*.vos
 *.glob
 *.o
 *.a
@@ -40,6 +42,9 @@
 /riscV/ConstpropOp.v
 /riscV/SelectOp.v
 /riscV/SelectLong.v
+/aarch64/ConstpropOp.v
+/aarch64/SelectOp.v
+/aarch64/SelectLong.v
 /backend/SelectDiv.v
 /backend/SplitLong.v
 /cparser/Parser.v
