@@ -106,11 +106,11 @@ Notation "'assertion' A ; B" := (if A then B else assertion_failed)
 
 Local Open Scope error_monad_scope.
 
-Fixpoint mmap (A B: Type) (f: A -> res B) (l: list A) {struct l} : res (list B) :=
-  match l with
-  | nil => OK nil
-  | hd :: tl => do hd' <- f hd; do tl' <- mmap f tl; OK (hd' :: tl')
-  end.
+Definition mmap (A B: Type) (f: A -> res B) : list A -> res (list B) :=
+  fix mmap l := match l with
+              | nil => OK nil
+              | hd :: tl => do hd' <- f hd; do tl' <- mmap tl; OK (hd' :: tl')
+              end.
 
 Remark mmap_inversion:
   forall (A B: Type) (f: A -> res B) (l: list A) (l': list B),
