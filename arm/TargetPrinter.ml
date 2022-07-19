@@ -348,7 +348,10 @@ struct
       fprintf oc "	umull	%a, %a, %a, %a\n" ireg r1 ireg r2 ireg r3 ireg r4
     (* Floating-point VFD instructions *)
     | Pfcpyd(r1, r2) ->
-      fprintf oc "	vmov.f64 %a, %a\n" freg r1 freg r2
+      (* if Archi.single_precision_only then *)
+        fprintf oc "	vmov.f32 %a, %a\n" freg_single r1 freg_single r2
+      (* else *)
+      (*   fprintf oc "	vmov.f64 %a, %a\n" freg r1 freg r2 *)
     | Pfabsd(r1, r2) ->
       fprintf oc "	vabs.f64 %a, %a\n" freg r1 freg r2
     | Pfnegd(r1, r2) ->
