@@ -30,7 +30,7 @@
   frame rule; instead, a weak form of the frame rule is provided
   by the lemmas that help us reason about the logical assertions. *)
 
-From Coq Require Import Setoid Program.Basics.
+From Coq Require Import Morphisms Setoid Program.Basics.
 Require Import Coqlib Decidableplus.
 Require Import AST Integers Values Memory Events Globalenvs.
 
@@ -404,12 +404,12 @@ Proof.
     inversion HH as [Hlo [Hhi Hperm]].
     split; constructor; repeat split.
     + assumption.
-    + omega.
-    + intros. apply Hperm. omega.
-    + omega.
+    + lia.
+    + intros. apply Hperm. lia.
+    + lia.
     + exact Hhi.
-    + intros. apply Hperm. omega.
-    + red; simpl; intros; omega.
+    + intros. apply Hperm. lia.
+    + red; simpl; intros; lia.
   - intros. simpl in *. intuition.
   - intros m HH.
     inversion_clear HH as [Hlm [Hmh Hdisj]].
@@ -516,7 +516,7 @@ Proof.
   destruct H as (H1 & H2 & H3).
   split; [assumption|].
   generalize (size_chunk_pos chunk).
-  unfold Ptrofs.max_unsigned. omega.
+  unfold Ptrofs.max_unsigned. lia.
 Qed.
 
 Lemma load_rule:
@@ -591,7 +591,7 @@ Proof.
   assert (Mem.valid_access m chunk b ofs Freeable).
   { split; auto. red; auto. }
   split; [|split].
-- generalize (size_chunk_pos chunk). omega.
+- generalize (size_chunk_pos chunk). lia.
 - assumption.
 - split; [assumption|].
   destruct (Mem.valid_access_load m chunk b ofs) as [v LOAD].
