@@ -1087,14 +1087,14 @@ Local Opaque b fe.
   apply (frame_env_separated b) in SEP. replace (make_env b) with fe in SEP by auto.
   (* Store of parent *)
   rewrite sep_swap3 in SEP.
-  apply range_contains in SEP;[|apply perm_F_any|tauto].
+  apply (range_contains Freeable Mptr) in SEP; [|apply perm_F_any|tauto].
   exploit (contains_set_stack (fun v' => v' = parent) parent (fun _ => True) m2' Tptr).
   rewrite chunk_of_Tptr; eexact SEP. apply Val.load_result_same; auto.
   clear SEP; intros (m3' & STORE_PARENT & SEP).
   rewrite sep_swap3 in SEP.
   (* Store of return address *)
   rewrite sep_swap4 in SEP.
-  apply range_contains in SEP; [|apply perm_F_any|tauto].
+  apply (range_contains Freeable Mptr) in SEP; [|apply perm_F_any|tauto].
   exploit (contains_set_stack (fun v' => v' = ra) ra (fun _ => True) m3' Tptr).
   rewrite chunk_of_Tptr; eexact SEP. apply Val.load_result_same; auto.
   clear SEP; intros (m4' & STORE_RETADDR & SEP).
