@@ -99,7 +99,7 @@ let rec expr p (prec, e) =
   | Eaddrof(a1, _) ->
       fprintf p "&%a" expr (prec', a1)
   | Ebinop(op, a1, a2, _) ->
-      fprintf p "%a@ %s %a"
+      fprintf p "(%a@ %s %a)"
                  expr (prec1, a1) (name_binop op) expr (prec2, a2)
   | Ecast(a1, ty) ->
       fprintf p "(%s) %a" (name_type ty) expr (prec', a1)
