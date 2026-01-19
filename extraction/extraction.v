@@ -15,14 +15,14 @@
 (* *********************************************************************)
 
 From Coq Require DecidableClass.
-Require Coqlib Wfsimpl Decidableplus Iteration.
-Require AST Floats.
-Require SelectLong Selection RTLgen Inlining ValueDomain.
-Require Tailcall Allocation Bounds.
-Require Ctypes Csyntax Ctyping Clight.
-Require Compiler.
-Require Parser.
-Require Initializers.
+From compcert Require Coqlib Wfsimpl Decidableplus Iteration.
+From compcert Require AST Floats.
+From compcert Require SelectLong Selection RTLgen Inlining ValueDomain.
+From compcert Require Tailcall Allocation Bounds.
+From compcert Require Ctypes Csyntax Ctyping Clight.
+From compcert Require Compiler.
+From compcert Require Parser.
+From compcert Require Initializers.
 
 (* Standard lib *)
 From Coq Require Import ExtrOcamlBasic ExtrOcamlNativeString.
