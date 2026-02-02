@@ -1,0 +1,41 @@
+(rule
+ (targets Parser.v)
+ (action
+  (run menhir --coq --coq-no-version-check %{dep:Parser.vy})))
+
+(ocamllex Lexer)
+
+(rule
+ (deps pre_parser.mly pre_parser_messages.ml)
+ (targets pre_parser.ml pre_parser.mli)
+ (action
+  (run
+   menhir
+   --table
+   -v
+   --no-stdlib
+   -la
+   1
+   --explain
+   pre_parser.mly
+   --base
+   pre_parser)))
+
+(rule
+ (targets pre_parser_messages.ml)
+ (action
+  (with-stdout-to
+   %{targets}
+   (run
+    menhir
+    --table
+    pre_parser.mly
+    -v
+    --no-stdlib
+    -la
+    1
+    -v
+    -la
+    2
+    --compile-errors
+    %{dep:handcrafted.messages}))))

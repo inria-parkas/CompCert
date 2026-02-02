@@ -1,0 +1,11 @@
+(rocq.theory
+ (name MenhirLib)
+ (package MenhirLib)
+ (stdlib yes)
+ (theories Stdlib)
+ (flags -w -deprecated-syntactic-definition)
+ (modules_flags
+  (Interpreter
+   (:standard -w -undeclared-scope))))
+
+(include_subdirs qualified)

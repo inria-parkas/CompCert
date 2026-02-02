@@ -1,0 +1,40 @@
+(subdir
+ compcert
+ (dynamic_include ../platform/dune.inc))
+
+(subdir
+ platform
+ (rule
+  (action
+   (copy riscV.dune dune.inc))
+  (enabled_if
+   (= %{env:TARGET_PLATFORM=ppc} riscV))))
+
+(subdir
+ platform
+ (rule
+  (action
+   (copy arm.dune dune.inc))
+  (enabled_if
+   (= %{env:TARGET_PLATFORM=ppc} arm))))
+
+(subdir
+ platform
+ (rule
+  (action
+   (copy aarch64.dune dune.inc))
+  (enabled_if
+   (= %{env:TARGET_PLATFORM=ppc} aarch64))))
+
+(subdir
+ platform
+ (rule
+  (action
+   (copy default.dune dune.inc))
+  (enabled_if
+   (not
+    (or
+     (= %{env:TARGET_PLATFORM=ppc} aarch64)
+     (or
+      (= %{env:TARGET_PLATFORM=ppc} arm)
+      (= %{env:TARGET_PLATFORM=ppc} riscV)))))))

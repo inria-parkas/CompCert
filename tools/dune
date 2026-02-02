@@ -1,0 +1,50 @@
+(executable
+ (name ndfun)
+ (flags :standard -w -27)
+ (libraries str))
+
+(executable
+ (name modorder)
+ (flags :standard -w -69)
+ (libraries str))
+
+(executable
+ (name config_to_ml)
+ (libraries str))
+
+(executable
+ (name ini_creator))
+
+(executable
+ (name config_creator))
+
+(executable
+ (name gen_documentation)
+ (libraries str))
+
+(rule
+ (targets MakefileConfig.ml)
+ (deps %{project_root}/Makefile.config)
+ (action
+  (with-stdout-to
+   %{targets}
+   (chdir
+    %{project_root}
+    (run config_to_ml %{deps})))))
+
+(rule
+ (targets Version.ml)
+ (deps %{project_root}/VERSION)
+ (action
+  (with-stdout-to
+   %{targets}
+   (chdir
+    %{project_root}
+    (run config_to_ml %{deps})))))
+
+(executable
+ (name configure)
+ (flags :standard -w -32)
+ (libraries str))
+
+(include_subdirs no)

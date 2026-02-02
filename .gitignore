@@ -85,3 +85,9 @@
 .nia.cache
 .nra.cache
 .csdp.cache
+
+# Dune build results
+
+_build/
+*.install
+*.opam

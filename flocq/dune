@@ -1,0 +1,12 @@
+(rocq.theory
+ (name Flocq)
+ (package Flocq)
+ (stdlib yes)
+ (theories Stdlib)
+ (flags
+  -w
+  -deprecated-syntactic-definition
+  -w
+  -unused-pattern-matching-variable))
+
+(include_subdirs qualified)

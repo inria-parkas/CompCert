@@ -1,0 +1,43 @@
+(lang dune 3.16)
+
+(context default)
+
+(context
+ (default
+  (name x86_64)
+  (env
+   (_
+    (env-vars
+     (TARGET_PLATFORM x86_64))))))
+
+(context
+ (default
+  (name ppc)
+  (env
+   (_
+    (env-vars
+     (TARGET_PLATFORM ppc))))))
+
+(context
+ (default
+  (name arm)
+  (env
+   (_
+    (env-vars
+     (TARGET_PLATFORM arm))))))
+
+(context
+ (default
+  (name aarch64)
+  (env
+   (_
+    (env-vars
+     (TARGET_PLATFORM aarch64))))))
+
+(context
+ (default
+  (name riscV)
+  (env
+   (_
+    (env-vars
+     (TARGET_PLATFORM riscV))))))

@@ -1,0 +1,54 @@
+(include ../shared.dune)
+
+(copy_files %{project_root}/platform/backend/*.{ml,mli})
+
+(copy_files %{project_root}/platform/debug/*.{ml,mli})
+
+(copy_files %{project_root}/platform/extractionMachdep.v)
+
+(copy_files %{project_root}/platform/*.{ml,mli})
+
+(copy_files %{project_root}/platform/driver/*.{ml,mli})
+
+(copy_files %{project_root}/platform/common/*.{ml,mli})
+
+(rule
+ (deps extraction.v extractionMachdep.v)
+ (targets extractionFull.v)
+ (package compcert)
+ (action
+  (copy extraction.v extractionFull.v)))
+
+(library
+ (name compcert)
+ (wrapped false)
+ (package compcert)
+ (modules_without_implementation c debugTypes dwarfTypes)
+ (modules :standard \ Driver GCC)
+ (instrumentation
+  (backend bisect_ppx))
+ (flags -w -32)
+ (libraries menhirLib str unix))
+
+(rule
+ (targets version.ml)
+ (package compcert)
+ (deps %{project_root}/VERSION)
+ (action
+  (with-stdout-to
+   %{targets}
+   (chdir
+    %{project_root}
+    (run config_to_ml %{deps})))))
+
+(executable
+ (name Driver)
+ (package compcert)
+ (public_name ccomp)
+ (modules Driver)
+ (modes byte exe)
+ (instrumentation
+  (backend bisect_ppx))
+ (libraries compcert))
+
+(include_subdirs no)
