@@ -25,6 +25,8 @@ let copy_and_rename new_platform_name file_dir = begin
   Sys.chdir (Filename.concat cwd "platform");
   copy_dir "." (Filename.concat cwd file_dir);
   Sys.chdir cwd;
+  (* rename platform *)
+  Sys.rename (Filename.concat file_dir "target") (Filename.concat file_dir new_platform_name)
 end
 
 
@@ -63,8 +65,8 @@ let write_whole_file filename s =
 
 let patch_file plat f = 
   let read_content = read_whole_file f in 
-  (* Replace all ".TargetPlatformCopy." with ".<platform>."*)
-  let regx = Str.regexp {|\.TargetPlatformCopy\.|} in 
+  (* Replace all ".target." with ".<platform>."*)
+  let regx = Str.regexp {|\.target\.|} in
   let patched_content = Str.global_replace regx ("."^plat^".") read_content in 
   (* Remove file *)
   Sys.remove f;
@@ -81,7 +83,7 @@ let docs_for_platform new_platform_name =
   copy_and_rename new_platform_name file_dir;
   Sys.chdir file_dir;
   Printf.printf "Copied dirs...\n"; 
-  (* Patch references to TargetPlatformCopy to platform name *)
+  (* Patch references to target to platform name *)
   patch_glob_files "." new_platform_name;
   (* Collect all .v files *)
   let (plat_dirs, plat_files) = collect_files_in_dirs "." in 

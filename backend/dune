@@ -9,3 +9,5 @@
   (with-stdout-to
    SplitLong.v
    (run ndfun %{dep:SplitLong.vp}))))
+
+(copy_files %{project_root}/platform/backend/Allocation.{vo,vok,vos})

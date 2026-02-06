@@ -4,9 +4,9 @@
 
 (copy_files %{project_root}/platform/debug/*.{ml,mli})
 
-(copy_files %{project_root}/platform/extractionMachdep.v)
+(copy_files %{project_root}/platform/target/extractionMachdep.v)
 
-(copy_files %{project_root}/platform/*.{ml,mli})
+(copy_files %{project_root}/platform/target/*.{ml,mli})
 
 (copy_files %{project_root}/platform/driver/*.{ml,mli})
 

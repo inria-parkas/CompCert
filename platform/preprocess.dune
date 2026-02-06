@@ -1,17 +1,23 @@
-(rule
- (action
-  (with-stdout-to
-   SelectOp.v
-   (run ndfun %{dep:SelectOp.vp}))))
+(subdir
+ target
+ (rule
+  (action
+   (with-stdout-to
+    SelectOp.v
+    (run ndfun %{dep:SelectOp.vp})))))
 
-(rule
- (action
-  (with-stdout-to
-   SelectLong.v
-   (run ndfun %{dep:SelectLong.vp}))))
+(subdir
+ target
+ (rule
+  (action
+   (with-stdout-to
+    SelectLong.v
+    (run ndfun %{dep:SelectLong.vp})))))
 
-(rule
- (action
-  (with-stdout-to
-   ConstpropOp.v
-   (run ndfun %{dep:ConstpropOp.vp}))))
+(subdir
+ target
+ (rule
+  (action
+   (with-stdout-to
+    ConstpropOp.v
+    (run ndfun %{dep:ConstpropOp.vp})))))

@@ -1,48 +1,60 @@
-(copy_files
- (alias target_platform)
- (only_sources)
- (enabled_if
-  (= %{env:TARGET_PLATFORM=ppc} ppc))
- (files %{project_root}/powerpc/*))
+(subdir
+ target
+ (copy_files
+  (alias target_platform)
+  (only_sources)
+  (enabled_if
+   (= %{env:TARGET_PLATFORM=ppc} ppc))
+  (files %{project_root}/powerpc/*)))
 
-(copy_files
- (alias target_platform)
- (only_sources)
- (enabled_if
-  (= %{env:TARGET_PLATFORM=ppc} x86_64))
- (files %{project_root}/x86/*.{v,vp,ml,mli}))
+(subdir
+ target
+ (copy_files
+  (alias target_platform)
+  (only_sources)
+  (enabled_if
+   (= %{env:TARGET_PLATFORM=ppc} x86_64))
+  (files %{project_root}/x86/*.{v,vp,ml,mli})))
 
-(copy_files
- (alias target_platform)
- (only_sources)
- (enabled_if
-  (= %{env:TARGET_PLATFORM=ppc} x86_64))
- (files %{project_root}/x86_64/*.{v,vp,ml,mli}))
+(subdir
+ target
+ (copy_files
+  (alias target_platform)
+  (only_sources)
+  (enabled_if
+   (= %{env:TARGET_PLATFORM=ppc} x86_64))
+  (files %{project_root}/x86_64/*.{v,vp,ml,mli})))
 
-(copy_files
- (alias target_platform)
- (only_sources)
- (enabled_if
-  (= %{env:TARGET_PLATFORM=ppc} riscV))
- (files %{project_root}/riscV/*))
+(subdir
+ target
+ (copy_files
+  (alias target_platform)
+  (only_sources)
+  (enabled_if
+   (= %{env:TARGET_PLATFORM=ppc} riscV))
+  (files %{project_root}/riscV/*)))
 
-(copy_files
- (alias target_platform)
- (only_sources)
- (enabled_if
-  (= %{env:TARGET_PLATFORM=ppc} arm))
- (files %{project_root}/arm/*))
+(subdir
+ target
+ (copy_files
+  (alias target_platform)
+  (only_sources)
+  (enabled_if
+   (= %{env:TARGET_PLATFORM=ppc} arm))
+  (files %{project_root}/arm/*)))
 
-(copy_files
- (alias target_platform)
- (only_sources)
- (enabled_if
-  (= %{env:TARGET_PLATFORM=ppc} aarch64))
- (files %{project_root}/aarch64/*))
+(subdir
+ target
+ (copy_files
+  (alias target_platform)
+  (only_sources)
+  (enabled_if
+   (= %{env:TARGET_PLATFORM=ppc} aarch64))
+  (files %{project_root}/aarch64/*)))
 
 (subdir
  backend
- (copy_files %{project_root}/backend/*))
+ (copy_files %{project_root}/backend/*.{v,vp,ml,mli}))
 
 (subdir
  cfrontend
@@ -88,7 +100,7 @@
   :standard
   \
   common.Subtyping
-  extractionMachdep
-  extractionMachdepClight))
+  target.extractionMachdep
+  target.extractionMachdepClight))
 
 (include_subdirs qualified)
