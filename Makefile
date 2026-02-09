@@ -31,7 +31,7 @@ endif
 DIRS := lib common $(ARCHDIRS) backend cfrontend driver cparser
 
 ifeq ($(CLIGHTGEN),true)
-DIRS += export
+DIRS += export debug extraction
 endif
 
 COQINCLUDES := $(foreach d, $(DIRS), -R $(d) compcert.$(d))
@@ -382,7 +382,7 @@ ifeq ($(INSTALL_COQDEV),true)
 	for d in $(DIRS); do \
           set -e; \
           install -d $(DESTDIR)$(COQDEVDIR)/$$d; \
-          install -m 0644 $$d/*.v $$d/*.vo $$d/*.glob $(DESTDIR)$(COQDEVDIR)/$$d/; \
+          install -m 0644 $$d/*.* $(DESTDIR)$(COQDEVDIR)/$$d/; \
           if test -d $$d/.coq-native; then \
             install -d $(DESTDIR)$(COQDEVDIR)/$$d/.coq-native; \
             install -m 0644 $$d/.coq-native/* $(DESTDIR)$(COQDEVDIR)/$$d/.coq-native/; \
@@ -390,6 +390,7 @@ ifeq ($(INSTALL_COQDEV),true)
 	done
 	install -m 0644 ./VERSION $(DESTDIR)$(COQDEVDIR)
 	install -m 0644 ./compcert.config $(DESTDIR)$(COQDEVDIR)
+	install -m 0644 ./compcert.ini $(DESTDIR)$(COQDEVDIR)
 	@(echo "To use, pass the following to coq_makefile or add the following to _CoqProject:"; echo "-R $(COQDEVDIR) compcert") > $(DESTDIR)$(COQDEVDIR)/README
 endif
 
